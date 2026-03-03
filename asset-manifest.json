@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/flowchart-builder/static/css/main.e6c13ad2.css",
-    "main.js": "/flowchart-builder/static/js/main.124b0541.js",
+    "main.js": "/flowchart-builder/static/js/main.e408a813.js",
     "static/js/453.3b142495.chunk.js": "/flowchart-builder/static/js/453.3b142495.chunk.js",
     "index.html": "/flowchart-builder/index.html",
     "main.e6c13ad2.css.map": "/flowchart-builder/static/css/main.e6c13ad2.css.map",
-    "main.124b0541.js.map": "/flowchart-builder/static/js/main.124b0541.js.map",
+    "main.e408a813.js.map": "/flowchart-builder/static/js/main.e408a813.js.map",
     "453.3b142495.chunk.js.map": "/flowchart-builder/static/js/453.3b142495.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.124b0541.js"
+    "static/js/main.e408a813.js"
   ]
 }
