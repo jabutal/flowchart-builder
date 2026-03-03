@@ -7,12 +7,9 @@ const clone = o => JSON.parse(JSON.stringify(o));
 // ── storage ────────────────────────────────────────────────────────────────────
 const KEY_CHARTS = "fc:charts";
 const KEY_LAST   = "fc:lastOpen";
-//const storeSave  = async (k,v) => { try { await window.storage.set(k, JSON.stringify(v)); } catch(e) {} };
-//const storeLoad  = async (k)   => { try { const r = await window.storage.get(k); return r ? JSON.parse(r.value) : null; } catch(e) { return null; } };
-//const storeDel   = async (k)   => { try { await window.storage.delete(k); } catch(e) {} };
-const storeSave = async (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {} };
-const storeLoad = async (k)   => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : null; } catch(e) { return null; } };
-const storeDel  = async (k)   => { try { localStorage.removeItem(k); } catch(e) {} };
+const storeSave  = async (k,v) => { try { await window.storage.set(k, JSON.stringify(v)); } catch(e) {} };
+const storeLoad  = async (k)   => { try { const r = await window.storage.get(k); return r ? JSON.parse(r.value) : null; } catch(e) { return null; } };
+const storeDel   = async (k)   => { try { await window.storage.delete(k); } catch(e) {} };
 
 // ── constants ──────────────────────────────────────────────────────────────────
 const SCHEMES = {
@@ -204,18 +201,13 @@ function Editor({ chart, onBack, onSave }) {
   const scheme  = SCHEMES[chart.scheme] || SCHEMES.sharepoint;
 
   const showToast = msg => { setToast(msg); setTimeout(() => setToast(""), 2200); };
-  //Pao Added
-  const onSaveRef = useRef(onSave);
-  const chartRef  = useRef(chart);
-  useEffect(() => { onSaveRef.current = onSave; }, [onSave]);
-  useEffect(() => { chartRef.current  = chart;  }, [chart]);
+
   // auto-save debounce
   useEffect(() => {
     if (!dirty) return;
     clearTimeout(autoRef.current);
     autoRef.current = setTimeout(async () => {
-      //await onSave({ ...chart, tree }, true);
-      await onSaveRef.current({ ...chartRef.current, tree }, true);
+      await onSave({ ...chart, tree }, true);
       setDirty(false);
       showToast("Auto-saved ✓");
     }, 1500);
@@ -450,8 +442,17 @@ export default function App() {
   const [search,   setSearch]   = useState("");
   const [delId,    setDelId]    = useState(null);
   const [toast,    setToast]    = useState("");
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameVal,  setRenameVal]  = useState("");
 
   const showToast = msg => { setToast(msg); setTimeout(()=>setToast(""),2200); };
+
+  const commitRename = () => {
+    if (!renameVal.trim()) { setRenamingId(null); return; }
+    setCharts(p => p.map(c => c.id===renamingId ? {...c, name:renameVal.trim()} : c));
+    setRenamingId(null);
+    showToast("Chart renamed ✓");
+  };
 
   useEffect(() => {
     (async () => {
@@ -527,11 +528,35 @@ export default function App() {
                     <div style={{position:"absolute",bottom:8,right:10,background:"#ffffff22",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#fff",fontWeight:600}}>Open →</div>
                   </div>
                   <div style={{padding:"14px 16px"}}>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
                       <span style={{fontSize:18}}>{chart.icon}</span>
-                      <button onClick={e=>{e.stopPropagation();setDelId(chart.id);}} style={{background:"transparent",border:"none",color:"#e05a5a",cursor:"pointer",fontSize:15,opacity:0.7}}>🗑</button>
+                      <div style={{display:"flex",gap:4}}>
+                        <button onClick={e=>{e.stopPropagation();setRenamingId(chart.id);setRenameVal(chart.name);}}
+                          style={{background:"transparent",border:"none",color:"#a0c0e8",cursor:"pointer",fontSize:14,opacity:0.8}}
+                          title="Rename">✎</button>
+                        <button onClick={e=>{e.stopPropagation();setDelId(chart.id);}}
+                          style={{background:"transparent",border:"none",color:"#e05a5a",cursor:"pointer",fontSize:14,opacity:0.7}}
+                          title="Delete">🗑</button>
+                      </div>
                     </div>
-                    <div style={{color:"#fff",fontWeight:700,fontSize:14,marginBottom:4}}>{chart.name}</div>
+                    {renamingId===chart.id ? (
+                      <div onClick={e=>e.stopPropagation()} style={{marginBottom:4}}>
+                        <input autoFocus value={renameVal} onChange={e=>setRenameVal(e.target.value)}
+                          onKeyDown={e=>{
+                            if(e.key==="Enter"){commitRename();}
+                            if(e.key==="Escape"){setRenamingId(null);}
+                          }}
+                          style={{width:"100%",padding:"5px 8px",borderRadius:6,border:"1.5px solid #4a90d9",background:"#0f2240",color:"#fff",fontSize:13,boxSizing:"border-box",outline:"none"}}/>
+                        <div style={{display:"flex",gap:6,marginTop:5}}>
+                          <button onClick={commitRename}
+                            style={{flex:1,padding:"4px",borderRadius:6,background:"#4a90d9",color:"#fff",border:"none",fontSize:11,cursor:"pointer",fontWeight:600}}>✓ Save</button>
+                          <button onClick={()=>setRenamingId(null)}
+                            style={{flex:1,padding:"4px",borderRadius:6,background:"transparent",color:"#a0c0e8",border:"1px solid #2c5282",fontSize:11,cursor:"pointer"}}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{color:"#fff",fontWeight:700,fontSize:14,marginBottom:4}}>{chart.name}</div>
+                    )}
                     <div style={{color:"#7090b0",fontSize:11}}>Created {chart.createdAt} · {flatten(chart.tree).length} nodes</div>
                     <div style={{marginTop:8,display:"flex",gap:6,alignItems:"center"}}>
                       <span style={{background:SCHEMES[chart.scheme].dept.bg,color:SCHEMES[chart.scheme].dept.text,fontSize:10,borderRadius:6,padding:"2px 8px",fontWeight:600}}>{chart.scheme}</span>
