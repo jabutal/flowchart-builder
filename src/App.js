@@ -47,6 +47,22 @@ async function gistCreate(token, charts) {
   return data.id;
 }
 
+// Search user's gists for an existing flowchart-builder gist
+async function gistFind(token) {
+  let page = 1;
+  while (true) {
+    const res = await fetch(`https://api.github.com/gists?per_page=100&page=${page}`, { headers: gistHeaders(token) });
+    if (!res.ok) throw new Error("Failed to list gists");
+    const data = await res.json();
+    if (data.length === 0) break;
+    const found = data.find(g => g.files && g.files[GIST_FILENAME]);
+    if (found) return found.id;
+    if (data.length < 100) break;
+    page++;
+  }
+  return null;
+}
+
 async function verifyToken(token) {
   const res = await fetch("https://api.github.com/user", { headers: gistHeaders(token) });
   if (!res.ok) throw new Error("Invalid token");
@@ -482,6 +498,14 @@ export default function App(){
         const user=await verifyToken(token);
         setUsername(user);
         let gid=gistId;
+        // If no gistId in localStorage, search GitHub for existing gist
+        if(!gid){
+          gid = await gistFind(token);
+          if(gid){
+            localStorage.setItem(LS_GISTID,gid);
+            setGistId(gid);
+          }
+        }
         if(gid){
           const saved=await gistLoad(token,gid);
           setCharts(saved||DEFAULT_CHARTS);
@@ -502,11 +526,22 @@ export default function App(){
     setToken(tok);setUsername(user);
     setSyncing(true);
     try{
-      const newGid=await gistCreate(tok,DEFAULT_CHARTS);
-      localStorage.setItem(LS_GISTID,newGid);
-      setGistId(newGid);
-      setCharts(DEFAULT_CHARTS);
-    } catch(e){ showToast("Connected but couldn't create Gist","error"); }
+      // First try to find an existing gist before creating a new one
+      let gid = await gistFind(tok);
+      if(gid){
+        localStorage.setItem(LS_GISTID,gid);
+        setGistId(gid);
+        const saved = await gistLoad(tok,gid);
+        setCharts(saved||DEFAULT_CHARTS);
+        showToast("Restored your flowcharts from GitHub Gist ✓");
+      } else {
+        gid = await gistCreate(tok,DEFAULT_CHARTS);
+        localStorage.setItem(LS_GISTID,gid);
+        setGistId(gid);
+        setCharts(DEFAULT_CHARTS);
+        showToast("New Gist created & connected ✓");
+      }
+    } catch(e){ showToast("Connected but couldn't sync Gist","error"); }
     finally{setSyncing(false);}
   };
 
