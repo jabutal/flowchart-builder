@@ -356,20 +356,35 @@ function Editor({chart,onBack,onSave,isTeam}){
             {allNodes.map(node=>{
               const c=nodeColors(node,scheme);
               const sh=node.shape||"rect";
-              const isDiamond=sh==="diamond";
-              const foW=isDiamond?NW-28:sh==="parallelogram"?NW-32:NW-42;
-              const foX=isDiamond?node.x+14:sh==="parallelogram"?node.x+18:node.x+8;
+              // Per-shape text insets so label is always visually centered
+              const textInsets={
+                rect:         {x:8,  y:2,  w:NW-42, h:NH-4},
+                rounded:      {x:12, y:2,  w:NW-46, h:NH-4},
+                diamond:      {x:22, y:4,  w:NW-50, h:NH-8},
+                parallelogram:{x:20, y:2,  w:NW-54, h:NH-4},
+                cylinder:     {x:8,  y:10, w:NW-42, h:NH-16},
+                oval:         {x:18, y:6,  w:NW-52, h:NH-12},
+                hexagon:      {x:20, y:4,  w:NW-54, h:NH-8},
+                document:     {x:8,  y:2,  w:NW-42, h:NH-10},
+              };
+              const ti=textInsets[sh]||textInsets.rect;
               return(
                 <g key={node.id} className="ne" onPointerDown={e=>onNodeDown(e,node.id)} onContextMenu={e=>openContextMenu(e,node.id)} style={{cursor:"grab"}}>
-                  {/* shadow */}
                   <ShapePath shape={sh} x={node.x+2} y={node.y+3} w={NW} h={NH} fill="#00000012" stroke="none" strokeWidth={0}/>
-                  {/* body */}
                   <ShapePath shape={sh} x={node.x} y={node.y} w={NW} h={NH} fill={c.bg} stroke={c.border} strokeWidth={1.8} filter={node.color==="root"||node.color==="dept"?"sh":null}/>
                   {node.cc&&<circle cx={node.x+10} cy={node.y+10} r={4} fill="#fff" stroke={c.border} strokeWidth={1.5}/>}
-                  {/* shape label top-left */}
-                  {sh!=="rect"&&<text x={node.x+4} y={node.y+NH-5} fontSize={8} fill={c.text} opacity={0.5}>{SHAPES[sh]?.icon}</text>}
-                  <foreignObject x={foX} y={node.y+2} width={foW} height={NH-4}>
-                    <div xmlns="http://www.w3.org/1999/xhtml" style={{height:NH-4,display:"flex",alignItems:"center",fontSize:node.color==="root"?12:11,fontWeight:node.color==="root"||node.color==="dept"?700:500,color:c.text,lineHeight:1.25,overflow:"hidden",fontFamily:"'Segoe UI',sans-serif",pointerEvents:"none",wordBreak:"break-word"}}>📁 {node.label}</div>
+                  {/* Centered text via SVG text element for reliable centering */}
+                  <foreignObject x={node.x+ti.x} y={node.y+ti.y} width={ti.w} height={ti.h}>
+                    <div xmlns="http://www.w3.org/1999/xhtml" style={{
+                      width:"100%", height:"100%",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      textAlign:"center",
+                      fontSize:node.color==="root"?12:11,
+                      fontWeight:node.color==="root"||node.color==="dept"?700:500,
+                      color:c.text, lineHeight:1.25, overflow:"hidden",
+                      fontFamily:"'Segoe UI',sans-serif", pointerEvents:"none",
+                      wordBreak:"break-word"
+                    }}>📁 {node.label}</div>
                   </foreignObject>
                   <g onPointerDown={e=>e.stopPropagation()} onClick={e=>onUrlClick(e,node.id)} style={{cursor:"pointer"}}>
                     <rect x={node.x+NW-30} y={node.y+8} width={24} height={24} rx={6} fill={node.url?accent:"#e8f0fe"} stroke={node.url?darken(accent):"#b3d4f5"} strokeWidth={1}/>
