@@ -181,7 +181,22 @@ function Mini({chart}){
 function Setup({onConnect}){
   const [tok,setTok]=useState(""),[ tt,setTt]=useState(""),[ busy,setBusy]=useState(false),[err,setErr]=useState(""),[st,setSt]=useState(false);
   const go=async()=>{if(!tok.trim()){setErr("Enter your PAT.");return;}setBusy(true);setErr("");try{const u=await whoami(tok.trim());localStorage.setItem(LT,tok.trim());if(tt.trim()){try{await whoami(tt.trim());localStorage.setItem(LTT,tt.trim());}catch(_){}}onConnect(tok.trim(),u);}catch(_){setErr("❌ Invalid token.");}finally{setBusy(false);}};
-  return(<div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f1e35,#1e3a5f)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif",padding:24}}><div style={{background:"#fff",borderRadius:16,padding:32,width:"100%",maxWidth:460,boxShadow:"0 8px 40px #0005"}}><div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:40,marginBottom:8}}>🔑</div><h2 style={{margin:"0 0 6px",color:"#1e3a5f",fontSize:22,fontWeight:800}}>Connect Your Account</h2><p style={{margin:0,color:"#777",fontSize:13}}>Charts saved to your private GitHub Gist.</p></div><Fld label="Personal Access Token" value={tok} onChange={setTok} type="password" autoFocus hint="Needs 'gist' scope" placeholder="ghp_..."/>{err&&<p style={{color:"#e05a5a",fontSize:12,margin:"-8px 0 12px"}}>{err}</p>}<div style={{background:"#f0f7ff",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#2c5282"}}><b>Get a token:</b> github.com/settings/tokens → Generate new token (classic) → check <b>gist</b></div><div style={{borderTop:"1px solid #e8f0fe",paddingTop:14,marginBottom:14}}><button onClick={()=>setSt(v=>!v)} style={{background:"transparent",border:"none",color:"#8e44ad",fontSize:13,cursor:"pointer",fontWeight:600,padding:0}}>{st?"▼":"▶"} 🟣 Team Space (optional)</button>{st&&<div style={{marginTop:12}}><Fld label="Team PAT" value={tt} onChange={setTt} type="password" hint="Ask your admin." placeholder="ghp_team_..."/></div>}</div><button onClick={go} disabled={busy} style={{width:"100%",padding:"11px",borderRadius:9,background:"linear-gradient(135deg,#4a90d9,#27ae60)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:busy?"not-allowed":"pointer",opacity:busy?.7:1}}>{busy?"Connecting...":"🔗 Connect & Continue"}</button></div></div>);
+  return(<div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f1e35,#1e3a5f)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif",padding:24}}>
+    <div style={{background:"#fff",borderRadius:16,padding:32,width:"100%",maxWidth:460,boxShadow:"0 8px 40px #0005"}}>
+      <div style={{textAlign:"center",marginBottom:24}}>
+        <div style={{fontSize:40,marginBottom:8}}>🔑</div>
+        <h2 style={{margin:"0 0 6px",color:"#1e3a5f",fontSize:22,fontWeight:800}}>Connect Your Account</h2>
+        <p style={{margin:0,color:"#777",fontSize:13}}>Charts saved to your private GitHub Gist.</p></div>
+        <Fld label="Personal Access Token" value={tok} onChange={setTok} type="password" autoFocus hint="Needs 'gist' scope" placeholder="ghp_..."/>
+        {err&&<p style={{color:"#e05a5a",fontSize:12,margin:"-8px 0 12px"}}>{err}</p>}
+        <div style={{background:"#f0f7ff",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#2c5282"}}>
+          <b>How to get a token:</b><br/>
+          1. Go to <b>github.com/settings/tokens</b><br/>
+          2. Click <b>Generate new token (classic)</b><br/>
+          3. Check only the <b>gist</b> scope ✅<br/>
+          4. Click <b>Generate token</b> and copy it
+          </div>
+          <div style={{borderTop:"1px solid #e8f0fe",paddingTop:14,marginBottom:14}}><button onClick={()=>setSt(v=>!v)} style={{background:"transparent",border:"none",color:"#8e44ad",fontSize:13,cursor:"pointer",fontWeight:600,padding:0}}>{st?"▼":"▶"} 🟣 Team Space (optional)</button>{st&&<div style={{marginTop:12}}><Fld label="Team PAT" value={tt} onChange={setTt} type="password" hint="Ask your admin." placeholder="ghp_team_..."/></div>}</div><button onClick={go} disabled={busy} style={{width:"100%",padding:"11px",borderRadius:9,background:"linear-gradient(135deg,#4a90d9,#27ae60)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:busy?"not-allowed":"pointer",opacity:busy?.7:1}}>{busy?"Connecting...":"🔗 Connect & Continue"}</button></div></div>);
 }
 
 // ─── context menu ─────────────────────────────────────────────────────────────
