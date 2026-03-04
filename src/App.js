@@ -90,14 +90,39 @@ function hpos(node, side) {
 
 // ─── color scheme ─────────────────────────────────────────────────────────────
 const SCHEMES = {
-  sharepoint:{ root:{bg:"#1e3a5f",text:"#fff",border:"#0f2240"}, dept:{bg:"#4a90d9",text:"#fff",border:"#2c6fad"}, sub:{bg:"#e8f0fe",text:"#1e3a5f",border:"#4a90d9"}, leaf:{bg:"#f8faff",text:"#2d3748",border:"#b3d4f5"} },
-  green:     { root:{bg:"#1a4731",text:"#fff",border:"#0f2d1e"}, dept:{bg:"#27ae60",text:"#fff",border:"#1e8449"}, sub:{bg:"#eafaf1",text:"#1a4731",border:"#27ae60"}, leaf:{bg:"#f9fefe",text:"#2d3748",border:"#a9dfbf"} },
-  purple:    { root:{bg:"#3b1f6e",text:"#fff",border:"#260f52"}, dept:{bg:"#8e44ad",text:"#fff",border:"#6c3483"}, sub:{bg:"#f5eef8",text:"#3b1f6e",border:"#8e44ad"}, leaf:{bg:"#fdfefe",text:"#2d3748",border:"#d7bde2"} },
-  orange:    { root:{bg:"#7d3c0a",text:"#fff",border:"#5d2d07"}, dept:{bg:"#e67e22",text:"#fff",border:"#ca6f1e"}, sub:{bg:"#fef5e7",text:"#7d3c0a",border:"#e67e22"}, leaf:{bg:"#fffdf9",text:"#2d3748",border:"#fad7a0"} },
+  sharepoint:{ root:{bg:"#1e3a5f",text:"#fff",border:"#0f2240"}, 
+      dept:{bg:"#4a90d9",text:"#fff",border:"#2c6fad"}, 
+      sub:{bg:"#e8f0fe",text:"#1e3a5f",border:"#4a90d9"}, 
+      leaf:{bg:"#f8faff",text:"#2d3748",border:"#b3d4f5"} },
+  green:     { root:{bg:"#1a4731",text:"#fff",border:"#0f2d1e"}, 
+      dept:{bg:"#27ae60",text:"#fff",border:"#1e8449"}, 
+      sub:{bg:"#eafaf1",text:"#1a4731",border:"#27ae60"}, 
+      leaf:{bg:"#f9fefe",text:"#2d3748",border:"#a9dfbf"} },
+  purple:    { root:{bg:"#3b1f6e",text:"#fff",border:"#260f52"}, 
+      dept:{bg:"#8e44ad",text:"#fff",border:"#6c3483"}, 
+      sub:{bg:"#f5eef8",text:"#3b1f6e",border:"#8e44ad"}, 
+      leaf:{bg:"#fdfefe",text:"#2d3748",border:"#d7bde2"} },
+  orange:    { root:{bg:"#7d3c0a",text:"#fff",border:"#5d2d07"}, 
+      dept:{bg:"#e67e22",text:"#fff",border:"#ca6f1e"}, 
+      sub:{bg:"#fef5e7",text:"#7d3c0a",border:"#e67e22"}, 
+      leaf:{bg:"#fffdf9",text:"#2d3748",border:"#fad7a0"} },
 };
-const SWATCHES=["#1e3a5f","#4a90d9","#27ae60","#8e44ad","#e67e22","#e05a5a","#16a085","#2c3e50","#f39c12","#d35400","#7f8c8d","#1abc9c","#e8f0fe","#eafaf1","#f5eef8","#fef5e7","#ffffff","#f0f4fa","#2d3748","#000000"];
-const TEMPLATES=[{label:"Blank",icon:"✨",scheme:"sharepoint",desc:"Empty canvas"},{label:"Workflow",icon:"📋",scheme:"green",desc:"Task flow"},{label:"Org Chart",icon:"🏢",scheme:"purple",desc:"Team structure"},{label:"Decisions",icon:"🔀",scheme:"orange",desc:"Yes / No tree"}];
-const TC=[{bg:"#dbeafe",text:"#1e40af",border:"#93c5fd"},{bg:"#dcfce7",text:"#166534",border:"#86efac"},{bg:"#fce7f3",text:"#9d174d",border:"#f9a8d4"},{bg:"#fef9c3",text:"#854d0e",border:"#fde047"},{bg:"#ede9fe",text:"#5b21b6",border:"#c4b5fd"},{bg:"#ffedd5",text:"#9a3412",border:"#fdba74"},{bg:"#e0f2fe",text:"#0c4a6e",border:"#7dd3fc"},{bg:"#f1f5f9",text:"#334155",border:"#cbd5e1"}];
+const SWATCHES=["#1e3a5f",
+  "#4a90d9","#27ae60","#8e44ad","#e67e22","#e05a5a","#16a085","#2c3e50","#f39c12",
+  "#d35400","#7f8c8d","#1abc9c","#e8f0fe","#eafaf1","#f5eef8","#fef5e7","#ffffff","#f0f4fa","#2d3748","#000000"];
+const TEMPLATES=[
+  {label:"Blank",icon:"✨",scheme:"sharepoint",desc:"Empty canvas"},
+  {label:"Workflow",icon:"📋",scheme:"green",desc:"Task flow"},
+  {label:"Org Chart",icon:"🏢",scheme:"purple",desc:"Team structure"},
+  {label:"Decisions",icon:"🔀",scheme:"orange",desc:"Yes / No tree"}];
+const TC=[{bg:"#dbeafe",text:"#1e40af",border:"#93c5fd"},
+  {bg:"#dcfce7",text:"#166534",border:"#86efac"},
+  {bg:"#fce7f3",text:"#9d174d",border:"#f9a8d4"},
+  {bg:"#fef9c3",text:"#854d0e",border:"#fde047"},
+  {bg:"#ede9fe",text:"#5b21b6",border:"#c4b5fd"},
+  {bg:"#ffedd5",text:"#9a3412",border:"#fdba74"},
+  {bg:"#e0f2fe",text:"#0c4a6e",border:"#7dd3fc"},
+  {bg:"#f1f5f9",text:"#334155",border:"#cbd5e1"}];
 const tc = t => TC[Math.abs([...t].reduce((a,c)=>a+c.charCodeAt(0),0))%TC.length];
 
 const ct = hex => { const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return (r*299+g*587+b*114)/1000>128?"#1e1e1e":"#fff"; };
@@ -118,7 +143,10 @@ const D_TEAM = [];
 
 // ─── tiny UI atoms ────────────────────────────────────────────────────────────
 function Fld({label,value,onChange,placeholder,autoFocus,type="text",hint}){
-  return(<div style={{marginBottom:12}}><label style={{fontSize:11,color:"#555",display:"block",marginBottom:4,fontWeight:600}}>{label}</label><input autoFocus={autoFocus} value={value} placeholder={placeholder} type={type} onChange={e=>onChange(e.target.value)} style={{width:"100%",padding:"7px 10px",borderRadius:7,border:"1.5px solid #d0dcea",fontSize:13,boxSizing:"border-box",outline:"none"}}/>{hint&&<p style={{fontSize:11,color:"#888",margin:"4px 0 0"}}>{hint}</p>}</div>);
+  return(<div style={{marginBottom:12}}>
+    <label style={{fontSize:11,color:"#555",display:"block",marginBottom:4,fontWeight:600}}>{label}</label>
+    <input autoFocus={autoFocus} value={value} placeholder={placeholder} type={type} onChange={e=>onChange(e.target.value)} style={{width:"100%",padding:"7px 10px",borderRadius:7,border:"1.5px solid #d0dcea",fontSize:13,boxSizing:"border-box",outline:"none"}}/>
+    {hint&&<p style={{fontSize:11,color:"#888",margin:"4px 0 0"}}>{hint}</p>}</div>);
 }
 function BR({children}){return <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:10}}>{children}</div>;}
 function B({v,onClick,children,disabled}){
@@ -392,7 +420,7 @@ function Editor({chart,onBack,onSave,isTeam}){
           {modal.type==="node"&&<>
             <h3 style={{margin:"0 0 14px",color:"#1e3a5f",fontSize:16}}>✏️ Edit Node</h3>
             <div style={{display:"flex",borderBottom:"2px solid #e8f0fe",marginBottom:14}}>{["info","shape","color"].map(t=><button key={t} onClick={()=>setTab(t)} style={{padding:"6px 14px",border:"none",borderBottom:tab===t?`2px solid ${accent}`:"2px solid transparent",background:"transparent",color:tab===t?accent:"#888",fontWeight:600,fontSize:12,cursor:"pointer",marginBottom:-2,textTransform:"capitalize"}}>{t==="info"?"📝 Info":t==="shape"?"🔷 Shape":"🎨 Color"}</button>)}</div>
-            {tab==="info"&&<><Fld label="Label" value={form.label} onChange={v=>setForm(f=>({...f,label:v}))} autoFocus/><Fld label="URL" value={form.url||""} onChange={v=>setForm(f=>({...f,url:v}))} placeholder="https://..."/><BR><B v="danger" onClick={()=>{delN(modal.id);setModal(null);}}>🗑</B><B v="dup" onClick={()=>{dupN(modal.id);setModal(null);}}>⧉ Dup</B><B v="ghost" onClick={()=>setModal(null)}>Cancel</B><B v="primary" onClick={saveModal}>Save</B></BR></>}
+            {tab==="info"&&<><Fld label="Label" value={form.label} onChange={v=>setForm(f=>({...f,label:v}))} autoFocus/><Fld label="URL" value={form.url||""} onChange={v=>setForm(f=>({...f,url:v}))} placeholder="https://..."/><BR><B v="danger" onClick={()=>{delN(modal.id);setModal(null);}}>🗑</B><B v="dup" onClick={()=>{dupN(modal.id);setModal(null);}}>⧉ Duplicate</B><B v="ghost" onClick={()=>setModal(null)}>Cancel</B><B v="primary" onClick={saveModal}>Save</B></BR></>}
             {tab==="shape"&&<><ShapePick current={mNode?.shape||"rect"} onChange={s=>mN(ns=>ns.map(n=>n.id===modal.id?{...n,shape:s}:n))}/><BR><B v="ghost" onClick={()=>setModal(null)}>Close</B></BR></>}
             {tab==="color"&&<>{mNode&&(()=>{const c=nc(mNode,scheme);return<div style={{marginBottom:14,display:"flex",justifyContent:"center"}}><div style={{width:NW,height:NH,borderRadius:9,background:c.bg,border:`2px solid ${c.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:c.text}}>{mNode.label}</div></div>;})()}<ColPick current={mNode?.cc||""} onSelect={cc=>mN(ns=>ns.map(n=>n.id===modal.id?{...n,cc}:n))} onReset={()=>mN(ns=>ns.map(n=>n.id===modal.id?{...n,cc:null}:n))}/><BR><B v="ghost" onClick={()=>setModal(null)}>Close</B></BR></>}
           </>}
