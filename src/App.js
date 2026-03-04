@@ -172,45 +172,79 @@ function TokenSetup({onConnect}){
 // ── Context Menu ───────────────────────────────────────────────────────────────
 function ContextMenu({x,y,node,scheme,onClose,onEdit,onDuplicate,onDelete,onAddChild,onShapeChange}){
   const [showShapes,setShowShapes]=useState(false);
-  useEffect(()=>{const h=()=>onClose();window.addEventListener("pointerdown",h);return()=>window.removeEventListener("pointerdown",h);},[onClose]);
+  const menuRef=useRef();
+
+  // Close on outside click
+  useEffect(()=>{
+    const h=e=>{if(menuRef.current&&!menuRef.current.contains(e.target))onClose();};
+    window.addEventListener("pointerdown",h);
+    return()=>window.removeEventListener("pointerdown",h);
+  },[onClose]);
+
+  // Clamp menu to viewport
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const mw=190, mh=220;
+  const cx=Math.min(x, vw-mw-8);
+  const cy=Math.min(y, vh-mh-8);
+
+  // Shape panel: open right or left depending on space
+  const shapeW=216, shapeH=260;
+  const shapeOnRight=cx+mw+shapeW < vw;
+  const shapeX=shapeOnRight ? cx+mw : cx-shapeW;
+  const shapeY=Math.min(cy+120, vh-shapeH-8);
+
+  const menuItem=(icon,label,action,danger=false)=>(
+    <button key={label} onClick={()=>{action();onClose();}}
+      style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"8px 14px",border:"none",background:"transparent",cursor:"pointer",fontSize:12,color:danger?"#e05a5a":"#2d3748",textAlign:"left"}}
+      onMouseEnter={e=>e.currentTarget.style.background=danger?"#fff5f5":"#f0f7ff"}
+      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+      {icon} {label}
+    </button>
+  );
+
   return(
-    <div onPointerDown={e=>e.stopPropagation()} style={{position:"fixed",left:x,top:y,background:"#fff",borderRadius:10,boxShadow:"0 4px 24px #0003",zIndex:1000,minWidth:180,overflow:"hidden",border:"1px solid #e0e8f0"}}>
-      <div style={{padding:"8px 12px",background:"#f0f7ff",borderBottom:"1px solid #e0e8f0",fontSize:12,fontWeight:700,color:"#1e3a5f",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>📁 {node.label}</div>
-      {[
-        {icon:"✏️",label:"Edit / Rename",  action:onEdit},
-        {icon:"⧉", label:"Duplicate Node", action:onDuplicate},
-        {icon:"➕",label:"Add Child",       action:onAddChild},
-      ].map(({icon,label,action})=>(
-        <button key={label} onClick={()=>{action();onClose();}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"8px 14px",border:"none",background:"transparent",cursor:"pointer",fontSize:12,color:"#2d3748",textAlign:"left"}}
-          onMouseEnter={e=>e.currentTarget.style.background="#f0f7ff"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-          {icon} {label}
+    <>
+      {/* Main menu */}
+      <div ref={menuRef} onPointerDown={e=>e.stopPropagation()}
+        style={{position:"fixed",left:cx,top:cy,background:"#fff",borderRadius:10,boxShadow:"0 4px 24px #0003",zIndex:1000,minWidth:mw,overflow:"hidden",border:"1px solid #e0e8f0"}}>
+        <div style={{padding:"8px 12px",background:"#f0f7ff",borderBottom:"1px solid #e0e8f0",fontSize:12,fontWeight:700,color:"#1e3a5f",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+          📁 {node.label}
+        </div>
+        {menuItem("✏️","Edit / Rename",onEdit)}
+        {menuItem("⧉","Duplicate Node",onDuplicate)}
+        {menuItem("➕","Add Child",onAddChild)}
+        <button
+          onClick={()=>setShowShapes(v=>!v)}
+          style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",padding:"8px 14px",border:"none",background:showShapes?"#e8f0fe":"transparent",cursor:"pointer",fontSize:12,color:"#2d3748"}}
+          onMouseEnter={e=>e.currentTarget.style.background="#f0f7ff"}
+          onMouseLeave={e=>e.currentTarget.style.background=showShapes?"#e8f0fe":"transparent"}>
+          <span>🔷 Change Shape</span>
+          <span style={{fontSize:10,color:"#4a90d9"}}>{showShapes?"◀":"▶"}</span>
         </button>
-      ))}
-      {/* Shape submenu */}
-      <div style={{position:"relative"}}>
-        <button onClick={()=>setShowShapes(v=>!v)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",padding:"8px 14px",border:"none",background:showShapes?"#f0f7ff":"transparent",cursor:"pointer",fontSize:12,color:"#2d3748"}}
-          onMouseEnter={e=>e.currentTarget.style.background="#f0f7ff"} onMouseLeave={e=>{if(!showShapes)e.currentTarget.style.background="transparent";}}>
-          <span>🔷 Change Shape</span><span style={{fontSize:10}}>▶</span>
-        </button>
-        {showShapes&&(
-          <div style={{position:"absolute",left:"100%",top:0,background:"#fff",borderRadius:10,boxShadow:"0 4px 24px #0003",border:"1px solid #e0e8f0",padding:8,display:"grid",gridTemplateColumns:"1fr 1fr",gap:4,width:200}}>
+        <div style={{borderTop:"1px solid #fee2e2"}}>
+          {menuItem("🗑️","Delete Node",onDelete,true)}
+        </div>
+      </div>
+
+      {/* Shape panel — rendered as separate fixed overlay so it's never clipped */}
+      {showShapes&&(
+        <div onPointerDown={e=>e.stopPropagation()}
+          style={{position:"fixed",left:shapeX,top:shapeY,background:"#fff",borderRadius:12,boxShadow:"0 6px 28px #0004",border:"1px solid #e0e8f0",padding:10,zIndex:1001,width:shapeW}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#1e3a5f",marginBottom:8,paddingBottom:6,borderBottom:"1px solid #e8f0fe"}}>🔷 Select Shape</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
             {Object.entries(SHAPES).map(([key,{label,icon}])=>(
               <button key={key} onClick={()=>{onShapeChange(key);onClose();}}
-                style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"6px",border:`2px solid ${node.shape===key?"#4a90d9":"#e0e8f0"}`,borderRadius:7,background:node.shape===key?"#e8f0fe":"#fff",cursor:"pointer",fontSize:12}}>
-                <span style={{fontSize:16}}>{icon}</span>
-                <span style={{fontSize:9,color:"#555",marginTop:2}}>{label}</span>
+                style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"8px 4px",border:`2px solid ${(node.shape||"rect")===key?"#4a90d9":"#e0e8f0"}`,borderRadius:8,background:(node.shape||"rect")===key?"#e8f0fe":"#fafafa",cursor:"pointer",transition:"all 0.1s"}}
+                onMouseEnter={e=>{if((node.shape||"rect")!==key)e.currentTarget.style.background="#f0f7ff";}}
+                onMouseLeave={e=>{if((node.shape||"rect")!==key)e.currentTarget.style.background="#fafafa";}}>
+                <span style={{fontSize:20,marginBottom:3}}>{icon}</span>
+                <span style={{fontSize:9,color:"#555",fontWeight:600,textAlign:"center",lineHeight:1.2}}>{label}</span>
               </button>
             ))}
           </div>
-        )}
-      </div>
-      <div style={{borderTop:"1px solid #fee2e2"}}>
-        <button onClick={()=>{onDelete();onClose();}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"8px 14px",border:"none",background:"transparent",cursor:"pointer",fontSize:12,color:"#e05a5a"}}
-          onMouseEnter={e=>e.currentTarget.style.background="#fff5f5"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-          🗑️ Delete Node
-        </button>
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }
 
