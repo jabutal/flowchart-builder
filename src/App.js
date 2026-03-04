@@ -12,17 +12,16 @@ const LS_GIST_ID      = "fc:gist_id";
 const LS_TEAM_TOKEN   = "fc:team_token";
 const LS_TEAM_GIST_ID = "fc:team_gist_id";
 
-const hdrs = t => ({ "Authorization":`token ${t}`, "Content-Type":"application/json", "Accept":"application/vnd.github.v3+json" });
+const hdrs  = t => ({ "Authorization":`token ${t}`, "Content-Type":"application/json", "Accept":"application/vnd.github.v3+json" });
+const apiGet  = (url,t)      => fetch(url,{headers:hdrs(t)}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); });
+const apiPost = (url,t,body) => fetch(url,{method:"POST", headers:hdrs(t),body:JSON.stringify(body)}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); });
+const apiPatch= (url,t,body) => fetch(url,{method:"PATCH",headers:hdrs(t),body:JSON.stringify(body)}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); });
 
-const apiGet  = (url,t)        => fetch(url,{headers:hdrs(t)}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); });
-const apiPost = (url,t,body)   => fetch(url,{method:"POST",  headers:hdrs(t),body:JSON.stringify(body)}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); });
-const apiPatch= (url,t,body)   => fetch(url,{method:"PATCH", headers:hdrs(t),body:JSON.stringify(body)}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); });
-
-const verifyToken  = t => apiGet("https://api.github.com/user", t).then(d=>d.login);
-const loadGist     = async(t,id,file) => { const d=await apiGet(`https://api.github.com/gists/${id}`,t); const c=d.files[file]?.content; return c?JSON.parse(c):null; };
-const saveGist     = (t,id,file,data) => apiPatch(`https://api.github.com/gists/${id}`,t,{files:{[file]:{content:JSON.stringify(data,null,2)}}});
-const createGist   = async(t,file,data,desc) => { const d=await apiPost("https://api.github.com/gists",t,{description:desc,public:false,files:{[file]:{content:JSON.stringify(data,null,2)}}}); return d.id; };
-const findGist     = async(t,file) => {
+const verifyToken = t => apiGet("https://api.github.com/user",t).then(d=>d.login);
+const loadGist    = async(t,id,file) => { const d=await apiGet(`https://api.github.com/gists/${id}`,t); const c=d.files[file]?.content; return c?JSON.parse(c):null; };
+const saveGist    = (t,id,file,data) => apiPatch(`https://api.github.com/gists/${id}`,t,{files:{[file]:{content:JSON.stringify(data,null,2)}}});
+const createGist  = async(t,file,data,desc) => { const d=await apiPost("https://api.github.com/gists",t,{description:desc,public:false,files:{[file]:{content:JSON.stringify(data,null,2)}}}); return d.id; };
+const findGist    = async(t,file) => {
   let page=1;
   while(true){
     const data=await apiGet(`https://api.github.com/gists?per_page=100&page=${page}`,t);
@@ -52,14 +51,27 @@ const TEMPLATES=[
   {label:"Custom",            icon:"✨",scheme:"orange",     desc:"Blank canvas"},
 ];
 
+// Preset tag colors
+const TAG_COLORS = [
+  {bg:"#dbeafe",text:"#1e40af",border:"#93c5fd"},
+  {bg:"#dcfce7",text:"#166534",border:"#86efac"},
+  {bg:"#fce7f3",text:"#9d174d",border:"#f9a8d4"},
+  {bg:"#fef9c3",text:"#854d0e",border:"#fde047"},
+  {bg:"#ede9fe",text:"#5b21b6",border:"#c4b5fd"},
+  {bg:"#ffedd5",text:"#9a3412",border:"#fdba74"},
+  {bg:"#e0f2fe",text:"#0c4a6e",border:"#7dd3fc"},
+  {bg:"#f1f5f9",text:"#334155",border:"#cbd5e1"},
+];
+const tagColor = tag => TAG_COLORS[Math.abs(tag.split("").reduce((a,c)=>a+c.charCodeAt(0),0))%TAG_COLORS.length];
+
 const mkNode=(id,label,color,x,y,children=[])=>({id,label,color,url:"",cc:null,x,y,children});
 const SP_TREE=mkNode("root","Company SharePoint Root","root",40,340,[
   mkNode("sales","Sales","dept",260,120,[mkNode("s1","Leads & Prospects","sub",480,40),mkNode("s2","Proposals & Quotes","sub",480,110),mkNode("s3","Contracts","sub",480,180),mkNode("s4","Sales Reports","sub",480,250,[mkNode("s4a","Monthly","leaf",700,210),mkNode("s4b","Quarterly","leaf",700,260),mkNode("s4c","Annual","leaf",700,310)]),mkNode("s5","Templates","sub",480,340)]),
   mkNode("projects","Projects","dept",260,420,[mkNode("p0","_Templates","sub",480,400,[mkNode("p0a","Project Charter","leaf",700,370),mkNode("p0b","Status Reports","leaf",700,420),mkNode("p0c","Meeting Notes","leaf",700,470)]),mkNode("p1","Active Projects","sub",480,500,[mkNode("p1a","2025-01 Alpha","leaf",700,530),mkNode("p1b","2025-02 Beta","leaf",700,580)]),mkNode("p2","Completed Projects","sub",480,600,[mkNode("p2a","2024 Archived","leaf",700,640)])]),
   mkNode("shared","Shared Resources","dept",260,700,[mkNode("r1","Company Templates","sub",480,700),mkNode("r2","Brand Assets","sub",480,770,[mkNode("r2a","Logos","leaf",700,740),mkNode("r2b","Style Guides","leaf",700,790)]),mkNode("r3","Policies & Procedures","sub",480,840),mkNode("r4","Training Materials","sub",480,910)]),
 ]);
-const DEFAULT_MY    = [{id:"sp1",name:"SharePoint Folder Structure",icon:"🗂️",scheme:"sharepoint",tree:clone(SP_TREE),createdAt:new Date().toLocaleDateString(),owner:"me"}];
-const DEFAULT_TEAM  = [];
+const DEFAULT_MY   = [{id:"sp1",name:"SharePoint Folder Structure",icon:"🗂️",scheme:"sharepoint",tree:clone(SP_TREE),createdAt:new Date().toLocaleDateString(),owner:"me",tags:[]}];
+const DEFAULT_TEAM = [];
 
 // ── tree helpers ───────────────────────────────────────────────────────────────
 const flatten   =(n,a=[])=>{a.push(n);n.children.forEach(c=>flatten(c,a));return a;};
@@ -82,14 +94,54 @@ function Field({label,value,onChange,placeholder,autoFocus,type="text",hint}){
 }
 function BtnRow({children}){return<div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:10}}>{children}</div>;}
 function Btn({v,onClick,children,disabled}){
-  const S={primary:{background:"#4a90d9",color:"#fff",border:"none"},outline:{background:"#fff",color:"#4a90d9",border:"1.5px solid #4a90d9"},danger:{background:"#fff",color:"#e05a5a",border:"1.5px solid #e05a5a"},ghost:{background:"#fff",color:"#888",border:"1.5px solid #ccc"},team:{background:"#8e44ad",color:"#fff",border:"none"}};
+  const S={primary:{background:"#4a90d9",color:"#fff",border:"none"},outline:{background:"#fff",color:"#4a90d9",border:"1.5px solid #4a90d9"},danger:{background:"#fff",color:"#e05a5a",border:"1.5px solid #e05a5a"},ghost:{background:"#fff",color:"#888",border:"1.5px solid #ccc"},team:{background:"#8e44ad",color:"#fff",border:"none"},move:{background:"#16a085",color:"#fff",border:"none"}};
   return<button onClick={onClick} disabled={disabled} style={{padding:"7px 14px",borderRadius:7,fontSize:12,cursor:disabled?"not-allowed":"pointer",fontWeight:600,opacity:disabled?0.6:1,...S[v]}}>{children}</button>;
 }
 function TBtn({onClick,children}){return<button onClick={onClick} style={{padding:"4px 10px",borderRadius:7,border:"1px solid #4a90d9",background:"transparent",color:"#a0c0e8",fontSize:12,cursor:"pointer",fontWeight:600}}>{children}</button>;}
 function Toast({msg,type="success"}){
   if(!msg)return null;
-  const bg=type==="error"?"#c0392b":type==="warning"?"#e67e22":type==="team"?"#8e44ad":"#1e3a5f";
+  const bg=type==="error"?"#c0392b":type==="warning"?"#e67e22":type==="team"?"#8e44ad":type==="move"?"#16a085":"#1e3a5f";
   return<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:bg,color:"#fff",padding:"10px 22px",borderRadius:20,fontSize:13,boxShadow:"0 4px 20px #0004",zIndex:9999,whiteSpace:"nowrap"}}>{msg}</div>;
+}
+
+// ── Tag Badge ──────────────────────────────────────────────────────────────────
+function TagBadge({tag,onRemove}){
+  const c=tagColor(tag);
+  return(
+    <span style={{display:"inline-flex",alignItems:"center",gap:4,background:c.bg,color:c.text,border:`1px solid ${c.border}`,borderRadius:12,padding:"2px 8px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>
+      #{tag}
+      {onRemove&&<span onClick={e=>{e.stopPropagation();onRemove(tag);}} style={{cursor:"pointer",fontSize:12,opacity:0.7,lineHeight:1}}>×</span>}
+    </span>
+  );
+}
+
+// ── Tag Editor ─────────────────────────────────────────────────────────────────
+function TagEditor({tags=[],onChange}){
+  const [input,setInput]=useState("");
+  const add=()=>{
+    const t=input.trim().toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9\-]/g,"");
+    if(!t||tags.includes(t))return;
+    onChange([...tags,t]);
+    setInput("");
+  };
+  const remove=tag=>onChange(tags.filter(t=>t!==tag));
+  return(
+    <div>
+      <label style={{fontSize:11,color:"#555",display:"block",marginBottom:6,fontWeight:600}}>Tags</label>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8,minHeight:28}}>
+        {tags.map(t=><TagBadge key={t} tag={t} onRemove={remove}/>)}
+        {tags.length===0&&<span style={{color:"#aaa",fontSize:12}}>No tags yet</span>}
+      </div>
+      <div style={{display:"flex",gap:6}}>
+        <input value={input} onChange={e=>setInput(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter"||e.key===","||e.key===" "){e.preventDefault();add();}}}
+          placeholder="Add tag (press Enter)"
+          style={{flex:1,padding:"6px 10px",borderRadius:7,border:"1.5px solid #d0dcea",fontSize:12,outline:"none"}}/>
+        <button onClick={add} style={{padding:"6px 12px",borderRadius:7,background:"#4a90d9",color:"#fff",border:"none",fontSize:12,cursor:"pointer",fontWeight:600}}>＋</button>
+      </div>
+      <p style={{fontSize:11,color:"#aaa",margin:"4px 0 0"}}>Press Enter, comma, or space to add. Letters, numbers, hyphens only.</p>
+    </div>
+  );
 }
 
 function ColorPicker({current,onSelect,onReset}){
@@ -125,64 +177,44 @@ function MiniPreview({chart}){
   );
 }
 
-// ── Token Setup Screen ─────────────────────────────────────────────────────────
+// ── Token Setup ────────────────────────────────────────────────────────────────
 function TokenSetup({onConnect}){
   const [token,setToken]=useState("");
   const [teamToken,setTeamToken]=useState("");
   const [loading,setLoading]=useState(false);
   const [err,setErr]=useState("");
   const [showTeam,setShowTeam]=useState(false);
-
   const connect=async()=>{
     if(!token.trim()){setErr("Please enter your Personal Access Token.");return;}
     setLoading(true);setErr("");
     try{
       const username=await verifyToken(token.trim());
       localStorage.setItem(LS_TOKEN,token.trim());
-      if(teamToken.trim()){
-        try{
-          await verifyToken(teamToken.trim());
-          localStorage.setItem(LS_TEAM_TOKEN,teamToken.trim());
-        } catch(e){ /* team token invalid, skip */ }
-      }
+      if(teamToken.trim()){try{await verifyToken(teamToken.trim());localStorage.setItem(LS_TEAM_TOKEN,teamToken.trim());}catch(e){}}
       onConnect(token.trim(),username);
-    } catch(e){setErr("❌ Invalid token. Please check and try again.");}
+    }catch(e){setErr("❌ Invalid token. Please check and try again.");}
     finally{setLoading(false);}
   };
-
   return(
     <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f1e35,#1e3a5f)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif",padding:24}}>
       <div style={{background:"#fff",borderRadius:16,padding:32,width:"100%",maxWidth:460,boxShadow:"0 8px 40px #0005"}}>
         <div style={{textAlign:"center",marginBottom:24}}>
           <div style={{fontSize:40,marginBottom:8}}>🔑</div>
           <h2 style={{margin:"0 0 6px",color:"#1e3a5f",fontSize:22,fontWeight:800}}>Connect Your Account</h2>
-          <p style={{margin:0,color:"#777",fontSize:13}}>Your flowcharts are saved to your own private GitHub Gist — surviving cache clears and working across devices.</p>
+          <p style={{margin:0,color:"#777",fontSize:13}}>Your flowcharts are saved to your own private GitHub Gist.</p>
         </div>
-
-        <Field label="Your GitHub Personal Access Token" value={token} onChange={setToken} placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" type="password" autoFocus
-          hint="Needs 'gist' scope only"/>
+        <Field label="Your GitHub Personal Access Token" value={token} onChange={setToken} placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" type="password" autoFocus hint="Needs 'gist' scope only"/>
         {err&&<p style={{color:"#e05a5a",fontSize:12,margin:"-8px 0 12px"}}>{err}</p>}
-
         <div style={{background:"#f0f7ff",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#2c5282"}}>
           <b>How to get a token:</b> Go to <b>github.com/settings/tokens</b> → Generate new token (classic) → check <b>gist</b> scope only → Generate & copy
         </div>
-
-        {/* Team token section */}
         <div style={{borderTop:"1px solid #e8f0fe",paddingTop:14,marginBottom:14}}>
-          <button onClick={()=>setShowTeam(v=>!v)}
-            style={{background:"transparent",border:"none",color:"#8e44ad",fontSize:13,cursor:"pointer",fontWeight:600,padding:0}}>
+          <button onClick={()=>setShowTeam(v=>!v)} style={{background:"transparent",border:"none",color:"#8e44ad",fontSize:13,cursor:"pointer",fontWeight:600,padding:0}}>
             {showTeam?"▼":"▶"} 🟣 Connect Team Space (optional)
           </button>
-          {showTeam&&(
-            <div style={{marginTop:12}}>
-              <Field label="Team GitHub PAT" value={teamToken} onChange={setTeamToken} placeholder="ghp_team_token_here" type="password"
-                hint="Ask your team admin for this token. Everyone uses the same one for the shared space."/>
-            </div>
-          )}
+          {showTeam&&<div style={{marginTop:12}}><Field label="Team GitHub PAT" value={teamToken} onChange={setTeamToken} placeholder="ghp_team_token_here" type="password" hint="Ask your team admin for this token."/></div>}
         </div>
-
-        <button onClick={connect} disabled={loading}
-          style={{width:"100%",padding:"11px",borderRadius:9,background:"linear-gradient(135deg,#4a90d9,#27ae60)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:loading?"not-allowed":"pointer",opacity:loading?0.7:1}}>
+        <button onClick={connect} disabled={loading} style={{width:"100%",padding:"11px",borderRadius:9,background:"linear-gradient(135deg,#4a90d9,#27ae60)",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:loading?"not-allowed":"pointer",opacity:loading?0.7:1}}>
           {loading?"Connecting...":"🔗 Connect & Continue"}
         </button>
       </div>
@@ -193,14 +225,14 @@ function TokenSetup({onConnect}){
 // ══════════════════════════════════════════════════════════════════════════════
 // EDITOR
 // ══════════════════════════════════════════════════════════════════════════════
-function Editor({chart,onBack,onSave,isTeam,username}){
-  const [tree,setTree]   = useState(()=>clone(chart.tree));
-  const [modal,setModal] = useState(null);
-  const [form,setForm]   = useState({label:"",url:""});
-  const [tab,setTab]     = useState("info");
-  const [vp,setVp]       = useState({x:60,y:40,scale:1});
-  const [toast,setToast] = useState({msg:"",type:"success"});
-  const [dirty,setDirty] = useState(false);
+function Editor({chart,onBack,onSave,isTeam}){
+  const [tree,setTree]   =useState(()=>clone(chart.tree));
+  const [modal,setModal] =useState(null);
+  const [form,setForm]   =useState({label:"",url:""});
+  const [tab,setTab]     =useState("info");
+  const [vp,setVp]       =useState({x:60,y:40,scale:1});
+  const [toast,setToast] =useState({msg:"",type:"success"});
+  const [dirty,setDirty] =useState(false);
   const vpRef   =useRef(vp); vpRef.current=vp;
   const dragRef =useRef(null);
   const cvRef   =useRef();
@@ -208,18 +240,15 @@ function Editor({chart,onBack,onSave,isTeam,username}){
   const onSaveRef=useRef(onSave); useEffect(()=>{onSaveRef.current=onSave;},[onSave]);
   const chartRef =useRef(chart);  useEffect(()=>{chartRef.current=chart; },[chart]);
   const scheme=SCHEMES[chart.scheme]||SCHEMES.sharepoint;
+  const accentColor=isTeam?"#8e44ad":"#4a90d9";
 
   const showToast=(msg,type="success")=>{setToast({msg,type});setTimeout(()=>setToast({msg:"",type:"success"}),2500);};
-
   useEffect(()=>{
     if(!dirty)return;
     clearTimeout(autoRef.current);
     autoRef.current=setTimeout(async()=>{
-      try{
-        await onSaveRef.current({...chartRef.current,tree},true);
-        setDirty(false);
-        showToast(isTeam?"Auto-saved to Team Space ✓":"Auto-saved to My Gist ✓",isTeam?"team":"success");
-      } catch(e){showToast("Auto-save failed","error");}
+      try{await onSaveRef.current({...chartRef.current,tree},true);setDirty(false);showToast(isTeam?"Auto-saved to Team ✓":"Auto-saved ✓",isTeam?"team":"success");}
+      catch(e){showToast("Auto-save failed","error");}
     },1500);
     return()=>clearTimeout(autoRef.current);
   },[tree,dirty]);
@@ -228,17 +257,14 @@ function Editor({chart,onBack,onSave,isTeam,username}){
   const toWorld=useCallback((sx,sy)=>{const r=cvRef.current.getBoundingClientRect();return{x:(sx-r.left-vpRef.current.x)/vpRef.current.scale,y:(sy-r.top-vpRef.current.y)/vpRef.current.scale};},[]);
   const onWheel=useCallback(e=>{e.preventDefault();const f=e.deltaY<0?1.1:0.91,r=cvRef.current.getBoundingClientRect();const cx=e.clientX-r.left,cy=e.clientY-r.top;setVp(p=>{const s=Math.min(3,Math.max(0.2,p.scale*f));return{x:cx-(cx-p.x)*(s/p.scale),y:cy-(cy-p.y)*(s/p.scale),scale:s};});},[]);
   useEffect(()=>{const el=cvRef.current;el.addEventListener("wheel",onWheel,{passive:false});return()=>el.removeEventListener("wheel",onWheel);},[onWheel]);
-
   const onCanvasDown=useCallback(e=>{if(e.button!==0||e.target.closest(".ne"))return;e.currentTarget.setPointerCapture(e.pointerId);dragRef.current={type:"pan",sc:{x:e.clientX,y:e.clientY},sv:{...vpRef.current}};},[]);
   const onNodeDown=useCallback((e,id)=>{if(e.button!==0)return;e.stopPropagation();e.currentTarget.closest(".cv").setPointerCapture(e.pointerId);const w=toWorld(e.clientX,e.clientY),n=findNode(tree,id);dragRef.current={type:"node",id,sw:w,sxy:{x:n.x,y:n.y},moved:false};},[tree,toWorld]);
   const onMove=useCallback(e=>{const d=dragRef.current;if(!d)return;if(d.type==="pan"){setVp({...d.sv,x:d.sv.x+(e.clientX-d.sc.x),y:d.sv.y+(e.clientY-d.sc.y)});}else{const w=toWorld(e.clientX,e.clientY),dx=w.x-d.sw.x,dy=w.y-d.sw.y;if(Math.abs(dx)>2||Math.abs(dy)>2)d.moved=true;if(!d.moved)return;mutate(t=>{const n=findNode(t,d.id);if(n){n.x=d.sxy.x+dx;n.y=d.sxy.y+dy;}return t;});}},[toWorld]);
   const onUp=useCallback(()=>{dragRef.current=null;},[]);
-
   const openEdit=useCallback((e,id)=>{e.preventDefault();e.stopPropagation();const n=findNode(tree,id);setForm({label:n.label,url:n.url||""});setTab("info");setModal({id,mode:"edit"});},[tree]);
   const onUrlClick=useCallback((e,id)=>{e.stopPropagation();const n=findNode(tree,id);if(n.url){window.open(n.url,"_blank");return;}setForm({label:n.label,url:""});setModal({id,mode:"url"});},[tree]);
   const applyColor=(id,hex)=>mutate(t=>{const n=findNode(t,id);if(n)n.cc=hex;return t;});
   const resetColor=id=>mutate(t=>{const n=findNode(t,id);if(n)n.cc=null;return t;});
-
   const saveModal=()=>{
     const{id,mode}=modal;
     mutate(t=>{
@@ -249,18 +275,12 @@ function Editor({chart,onBack,onSave,isTeam,username}){
     });
     setModal(null);
   };
-
-  const manualSave=async()=>{
-    clearTimeout(autoRef.current);
-    try{await onSaveRef.current({...chartRef.current,tree},false);setDirty(false);showToast(isTeam?"Saved to Team Space ✓":"Saved to My Gist ✓",isTeam?"team":"success");}
-    catch(e){showToast("Save failed","error");}
-  };
+  const manualSave=async()=>{clearTimeout(autoRef.current);try{await onSaveRef.current({...chartRef.current,tree},false);setDirty(false);showToast(isTeam?"Saved to Team ✓":"Saved ✓",isTeam?"team":"success");}catch(e){showToast("Save failed","error");}};
 
   const allNodes=flatten(tree);
   const edges=[];
   const be=n=>n.children.forEach(c=>{edges.push({from:n.id,to:c.id});be(c);});be(tree);
   const mNode=modal?findNode(tree,modal.id):null;
-  const accentColor=isTeam?"#8e44ad":"#4a90d9";
 
   return(
     <div style={{display:"flex",flexDirection:"column",height:"100vh",fontFamily:"'Segoe UI',sans-serif"}}>
@@ -268,7 +288,7 @@ function Editor({chart,onBack,onSave,isTeam,username}){
         <button onClick={onBack} style={{background:"transparent",border:`1px solid ${accentColor}`,color:"#a0c0e8",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:600}}>← Back</button>
         <span style={{color:isTeam?"#d7a8ff":"#fff",fontSize:11,fontWeight:700}}>{isTeam?"🟣 TEAM":"👤 MY"}</span>
         <span style={{color:"#fff",fontWeight:700,fontSize:15}}>{chart.icon} {chart.name}</span>
-        {chart.owner&&chart.owner!=="me"&&<span style={{fontSize:11,color:"#a0c0e8",background:"#ffffff18",borderRadius:6,padding:"2px 8px"}}>by {chart.owner}</span>}
+        {chart.tags?.map(t=><TagBadge key={t} tag={t}/>)}
         {dirty&&<span style={{fontSize:11,color:"#f39c12",background:"#f39c1222",borderRadius:6,padding:"2px 8px"}}>● Unsaved</span>}
         <span style={{color:"#a0c0e8",fontSize:11,flex:1}}>Scroll=Zoom · Hold+Drag=Pan · Drag=Move · Right-click=Edit</span>
         <span style={{color:"#a0c0e8",fontSize:12}}>{Math.round(vp.scale*100)}%</span>
@@ -286,7 +306,7 @@ function Editor({chart,onBack,onSave,isTeam,username}){
         <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",overflow:"visible"}}>
           <defs>
             <filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.13"/></filter>
-            <marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill="#4a90d9" opacity="0.55"/></marker>
+            <marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3z" fill={accentColor} opacity="0.55"/></marker>
           </defs>
           <g transform={`translate(${vp.x},${vp.y}) scale(${vp.scale})`}>
             {edges.map(({from,to})=>{const fn=findNode(tree,from),tn=findNode(tree,to);if(!fn||!tn)return null;const sx=fn.x+NW,sy=fn.y+NH/2,ex=tn.x,ey=tn.y+NH/2,mx=(sx+ex)/2;return<path key={`${from}-${to}`} d={`M${sx},${sy} C${mx},${sy} ${mx},${ey} ${ex},${ey}`} fill="none" stroke={accentColor} strokeWidth={1.6} strokeOpacity={0.45} markerEnd="url(#ar)"/>;}) }
@@ -310,7 +330,7 @@ function Editor({chart,onBack,onSave,isTeam,username}){
           </g>
         </svg>
         <div style={{position:"absolute",bottom:12,right:12,background:isTeam?"#2d0a4ecc":"#1e3a5fcc",color:"#cde",fontSize:11,borderRadius:8,padding:"6px 12px",pointerEvents:"none"}}>
-          {isTeam?"🟣 Team Space":"👤 My Space"} · ☁️ Gist sync on
+          {isTeam?"🟣 Team":"👤 My"} · ☁️ Gist sync
         </div>
       </div>
       {modal&&(
@@ -335,98 +355,191 @@ function Editor({chart,onBack,onSave,isTeam,username}){
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// CARD ACTIONS MODAL (tags + move)
+// ══════════════════════════════════════════════════════════════════════════════
+function CardActionsModal({chart,isTeam,hasTeam,onClose,onTagsChange,onMove,onDelete,onRename}){
+  const [name,setName]=useState(chart.name);
+  const [tags,setTags]=useState(chart.tags||[]);
+  const [tab,setTab]=useState("info");
+
+  const save=()=>{
+    onRename(chart.id,name);
+    onTagsChange(chart.id,tags);
+    onClose();
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"#0007",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,padding:24,width:420,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 8px 40px #0004"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+          <span style={{fontSize:22}}>{chart.icon}</span>
+          <h3 style={{margin:0,color:"#1e3a5f",fontSize:16,flex:1}}>{chart.name}</h3>
+          <span style={{fontSize:11,background:isTeam?"#ede9fe":"#e8f0fe",color:isTeam?"#8e44ad":"#4a90d9",borderRadius:6,padding:"2px 8px",fontWeight:600}}>{isTeam?"🟣 Team":"👤 My"}</span>
+        </div>
+
+        {/* tabs */}
+        <div style={{display:"flex",borderBottom:"2px solid #e8f0fe",marginBottom:14}}>
+          {["info","tags","move"].map(t=>(
+            <button key={t} onClick={()=>setTab(t)} style={{padding:"6px 16px",border:"none",borderBottom:tab===t?"2px solid #4a90d9":"2px solid transparent",background:"transparent",color:tab===t?"#4a90d9":"#888",fontWeight:600,fontSize:12,cursor:"pointer",marginBottom:-2,textTransform:"capitalize"}}>
+              {t==="info"?"📝 Rename":t==="tags"?"🏷️ Tags":"🔀 Move"}
+            </button>
+          ))}
+        </div>
+
+        {/* INFO tab */}
+        {tab==="info"&&(
+          <>
+            <Field label="Chart Name" value={name} onChange={setName} autoFocus/>
+            <BtnRow>
+              <Btn v="danger" onClick={()=>{onDelete(chart.id,isTeam);onClose();}}>🗑 Delete</Btn>
+              <Btn v="ghost" onClick={onClose}>Cancel</Btn>
+              <Btn v="primary" onClick={save}>Save</Btn>
+            </BtnRow>
+          </>
+        )}
+
+        {/* TAGS tab */}
+        {tab==="tags"&&(
+          <>
+            <TagEditor tags={tags} onChange={setTags}/>
+            {/* all tags in use (quick add) */}
+            <BtnRow>
+              <Btn v="ghost" onClick={onClose}>Cancel</Btn>
+              <Btn v="primary" onClick={save}>Save Tags</Btn>
+            </BtnRow>
+          </>
+        )}
+
+        {/* MOVE tab */}
+        {tab==="move"&&(
+          <div>
+            {isTeam?(
+              <>
+                <div style={{background:"#f0f7ff",borderRadius:8,padding:"12px 14px",marginBottom:14,fontSize:13,color:"#2c5282"}}>
+                  <b>Move to My Space</b><br/>
+                  <span style={{fontSize:12,color:"#555"}}>This chart will be removed from the Team Space and added to your private space. Other team members will no longer see it.</span>
+                </div>
+                <BtnRow>
+                  <Btn v="ghost" onClick={onClose}>Cancel</Btn>
+                  <Btn v="move" onClick={()=>{onMove(chart,true);onClose();}}>👤 Move to My Space</Btn>
+                </BtnRow>
+              </>
+            ):hasTeam?(
+              <>
+                <div style={{background:"#f5eef8",borderRadius:8,padding:"12px 14px",marginBottom:14,fontSize:13,color:"#5b21b6"}}>
+                  <b>Move to Team Space</b><br/>
+                  <span style={{fontSize:12,color:"#555"}}>This chart will be shared with everyone on the team. It will be removed from your private space.</span>
+                </div>
+                <BtnRow>
+                  <Btn v="ghost" onClick={onClose}>Cancel</Btn>
+                  <Btn v="team" onClick={()=>{onMove(chart,false);onClose();}}>🟣 Move to Team Space</Btn>
+                </BtnRow>
+              </>
+            ):(
+              <div style={{textAlign:"center",padding:"20px 0",color:"#888",fontSize:13}}>
+                <div style={{fontSize:32,marginBottom:8}}>🟣</div>
+                Connect a Team Space first to move charts there.<br/>
+                <span style={{fontSize:12}}>Go back and click "Connect Team Space".</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // LANDING
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App(){
   const [myCharts,    setMyCharts]    = useState(null);
   const [teamCharts,  setTeamCharts]  = useState(null);
-  const [activeChart, setActiveChart] = useState(null); // {chart, isTeam}
+  const [activeChart, setActiveChart] = useState(null);
   const [activeTab,   setActiveTab]   = useState("my");
   const [showNew,     setShowNew]     = useState(false);
   const [newName,     setNewName]     = useState("");
   const [tmpl,        setTmpl]        = useState(TEMPLATES[0]);
   const [search,      setSearch]      = useState("");
-  const [delTarget,   setDelTarget]   = useState(null);
+  const [tagFilter,   setTagFilter]   = useState(null);
+  const [cardModal,   setCardModal]   = useState(null); // {chart,isTeam}
   const [toast,       setToast]       = useState({msg:"",type:"success"});
-  const [renamingId,  setRenamingId]  = useState(null);
-  const [renameVal,   setRenameVal]   = useState("");
   const [token,       setToken]       = useState(()=>localStorage.getItem(LS_TOKEN)||"");
   const [teamToken,   setTeamToken]   = useState(()=>localStorage.getItem(LS_TEAM_TOKEN)||"");
   const [username,    setUsername]    = useState("");
   const [syncing,     setSyncing]     = useState(false);
   const [showTeamSetup,setShowTeamSetup]=useState(false);
-  const [newTeamToken, setNewTeamToken]=useState("");
+  const [newTeamToken,setNewTeamToken]=useState("");
 
   const showToast=(msg,type="success")=>{setToast({msg,type});setTimeout(()=>setToast({msg:"",type:"success"}),2500);};
 
-  // ── helpers to get/set gist IDs ──────────────────────────────────────────────
-  const getOrCreateGist=async(tok,file,defaults,desc)=>{
-    let id=localStorage.getItem(file==="my"?LS_GIST_ID:LS_TEAM_GIST_ID);
+  const getOrCreateGist=useCallback(async(tok,file,defaults,desc)=>{
+    const lsKey=file==="my"?LS_GIST_ID:LS_TEAM_GIST_ID;
     const gistFile=file==="my"?GIST_FILE:TEAM_GIST_FILE;
-    if(!id){
-      id=await findGist(tok,gistFile);
-      if(id) localStorage.setItem(file==="my"?LS_GIST_ID:LS_TEAM_GIST_ID,id);
-    }
-    if(!id){
-      id=await createGist(tok,gistFile,defaults,desc);
-      localStorage.setItem(file==="my"?LS_GIST_ID:LS_TEAM_GIST_ID,id);
-    }
+    let id=localStorage.getItem(lsKey);
+    if(!id){id=await findGist(tok,gistFile);if(id)localStorage.setItem(lsKey,id);}
+    if(!id){id=await createGist(tok,gistFile,defaults,desc);localStorage.setItem(lsKey,id);}
     const data=await loadGist(tok,id,gistFile);
     return{id,data:data||defaults};
-  };
+  },[]);
 
-  // ── load on mount ─────────────────────────────────────────────────────────────
   useEffect(()=>{
-    if(!token){setMyCharts(DEFAULT_MY);setTeamCharts(DEFAULT_TEAM);return;}
+    if(!token){setMyCharts(DEFAULT_MY);setTeamCharts([]);return;}
     (async()=>{
       setSyncing(true);
       try{
         const user=await verifyToken(token);setUsername(user);
-        const {data:myData}=await getOrCreateGist(token,"my",DEFAULT_MY,"Flowchart Builder – My Charts");
+        const{data:myData}=await getOrCreateGist(token,"my",DEFAULT_MY,"Flowchart Builder – My Charts");
         setMyCharts(myData);
         if(teamToken){
-          try{
-            const {data:teamData}=await getOrCreateGist(teamToken,"team",DEFAULT_TEAM,"Flowchart Builder – Team Charts");
-            setTeamCharts(teamData);
-          } catch(e){setTeamCharts([]);}
-        } else {setTeamCharts([]);}
-      } catch(e){setMyCharts(DEFAULT_MY);setTeamCharts([]);showToast("Could not sync — using local fallback","warning");}
+          try{const{data:td}=await getOrCreateGist(teamToken,"team",[],"Flowchart Builder – Team Charts");setTeamCharts(td);}
+          catch(e){setTeamCharts([]);}
+        } else setTeamCharts([]);
+      }catch(e){setMyCharts(DEFAULT_MY);setTeamCharts([]);showToast("Could not sync — using local fallback","warning");}
       finally{setSyncing(false);}
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   },[token]);
 
-  const handleConnect=(tok,user)=>{setToken(tok);setUsername(user);};
+  const persistMy  =(next)=>{const tok=localStorage.getItem(LS_TOKEN),gid=localStorage.getItem(LS_GIST_ID);if(tok&&gid)saveGist(tok,gid,GIST_FILE,next).catch(()=>{});};
+  const persistTeam=(next)=>{const tok=localStorage.getItem(LS_TEAM_TOKEN),gid=localStorage.getItem(LS_TEAM_GIST_ID);if(tok&&gid)saveGist(tok,gid,TEAM_GIST_FILE,next).catch(()=>{});};
 
-  // ── save helpers ─────────────────────────────────────────────────────────────
-  const saveMyCharts=useCallback(async(updated,silent=false)=>{
-    setMyCharts(p=>{
-      const next=p.map(c=>c.id===updated.id?updated:c);
-      const tok=localStorage.getItem(LS_TOKEN),gid=localStorage.getItem(LS_GIST_ID);
-      if(tok&&gid) saveGist(tok,gid,GIST_FILE,next).catch(()=>{});
-      return next;
-    });
-    if(!silent) showToast("Saved to My Gist ✓");
-  },[]);
+  const saveMyCharts  =useCallback(async(updated,silent=false)=>{setMyCharts(p=>{const n=p.map(c=>c.id===updated.id?updated:c);persistMy(n);return n;});if(!silent)showToast("Saved ✓");},[]);
+  const saveTeamCharts=useCallback(async(updated,silent=false)=>{setTeamCharts(p=>{const n=p.map(c=>c.id===updated.id?updated:c);persistTeam(n);return n;});if(!silent)showToast("Saved to Team ✓","team");},[]);
 
-  const saveTeamCharts=useCallback(async(updated,silent=false)=>{
-    setTeamCharts(p=>{
-      const next=p.map(c=>c.id===updated.id?updated:c);
-      const tok=localStorage.getItem(LS_TEAM_TOKEN),gid=localStorage.getItem(LS_TEAM_GIST_ID);
-      if(tok&&gid) saveGist(tok,gid,TEAM_GIST_FILE,next).catch(()=>{});
-      return next;
-    });
-    if(!silent) showToast("Saved to Team Space ✓","team");
-  },[]);
+  const updateTags=(id,tags,isTeam)=>{
+    if(isTeam){setTeamCharts(p=>{const n=p.map(c=>c.id===id?{...c,tags}:c);persistTeam(n);return n;});}
+    else{setMyCharts(p=>{const n=p.map(c=>c.id===id?{...c,tags}:c);persistMy(n);return n;});}
+    showToast("Tags updated ✓");
+  };
 
-  const commitRename=()=>{
-    if(!renameVal.trim()){setRenamingId(null);return;}
-    const isTeam=activeTab==="team";
-    if(isTeam){
-      setTeamCharts(p=>{const next=p.map(c=>c.id===renamingId?{...c,name:renameVal.trim()}:c);const tok=localStorage.getItem(LS_TEAM_TOKEN),gid=localStorage.getItem(LS_TEAM_GIST_ID);if(tok&&gid)saveGist(tok,gid,TEAM_GIST_FILE,next).catch(()=>{});return next;});
+  const renameChart=(id,name,isTeam)=>{
+    if(isTeam){setTeamCharts(p=>{const n=p.map(c=>c.id===id?{...c,name}:c);persistTeam(n);return n;});}
+    else{setMyCharts(p=>{const n=p.map(c=>c.id===id?{...c,name}:c);persistMy(n);return n;});}
+  };
+
+  const deleteChart=(id,isTeam)=>{
+    if(isTeam){setTeamCharts(p=>{const n=p.filter(c=>c.id!==id);persistTeam(n);return n;});}
+    else{setMyCharts(p=>{const n=p.filter(c=>c.id!==id);persistMy(n);return n;});}
+    showToast("Deleted");
+  };
+
+  // Move chart between spaces
+  const moveChart=(chart,fromTeam)=>{
+    const moved={...chart,owner:fromTeam?username:"me"};
+    if(fromTeam){
+      // team → my
+      setTeamCharts(p=>{const n=p.filter(c=>c.id!==chart.id);persistTeam(n);return n;});
+      setMyCharts(p=>{const n=[...p,moved];persistMy(n);return n;});
+      showToast("Moved to My Space ✓","move");
+      setActiveTab("my");
     } else {
-      setMyCharts(p=>{const next=p.map(c=>c.id===renamingId?{...c,name:renameVal.trim()}:c);const tok=localStorage.getItem(LS_TOKEN),gid=localStorage.getItem(LS_GIST_ID);if(tok&&gid)saveGist(tok,gid,GIST_FILE,next).catch(()=>{});return next;});
+      // my → team
+      setMyCharts(p=>{const n=p.filter(c=>c.id!==chart.id);persistMy(n);return n;});
+      setTeamCharts(p=>{const n=[...(p||[]),moved];persistTeam(n);return n;});
+      showToast("Moved to Team Space ✓","move");
+      setActiveTab("team");
     }
-    setRenamingId(null);showToast("Renamed ✓");
   };
 
   const connectTeamSpace=async()=>{
@@ -440,55 +553,38 @@ export default function App(){
       setTeamCharts(data);
       setShowTeamSetup(false);setNewTeamToken("");
       showToast("Connected to Team Space ✓","team");
-    } catch(e){showToast("Invalid team token","error");}
+    }catch(e){showToast("Invalid team token","error");}
     finally{setSyncing(false);}
   };
 
-  const disconnect=()=>{
-    [LS_TOKEN,LS_GIST_ID,LS_TEAM_TOKEN,LS_TEAM_GIST_ID].forEach(k=>localStorage.removeItem(k));
-    setToken("");setTeamToken("");setUsername("");
-  };
+  const disconnect=()=>{[LS_TOKEN,LS_GIST_ID,LS_TEAM_TOKEN,LS_TEAM_GIST_ID].forEach(k=>localStorage.removeItem(k));setToken("");setTeamToken("");setUsername("");};
 
-  if(!token) return <TokenSetup onConnect={handleConnect}/>;
+  if(!token) return <TokenSetup onConnect={(tok,user)=>{setToken(tok);setUsername(user);}}/>;
   if(myCharts===null||syncing) return(
     <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f1e35,#1e3a5f)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif"}}>
       <div style={{textAlign:"center",color:"#a0c0e8"}}><div style={{fontSize:40,marginBottom:12}}>☁️</div><div style={{fontSize:16,fontWeight:600}}>Syncing with GitHub Gist...</div></div>
     </div>
   );
 
-  if(activeChart) return(
-    <Editor chart={activeChart.chart} isTeam={activeChart.isTeam} username={username}
-      onBack={()=>setActiveChart(null)}
-      onSave={activeChart.isTeam?saveTeamCharts:saveMyCharts}/>
-  );
+  if(activeChart) return <Editor chart={activeChart.chart} isTeam={activeChart.isTeam} onBack={()=>setActiveChart(null)} onSave={activeChart.isTeam?saveTeamCharts:saveMyCharts}/>;
 
-  const charts     = activeTab==="my"?myCharts:(teamCharts||[]);
-  const filtered   = charts.filter(c=>c.name.toLowerCase().includes(search.toLowerCase()));
-  const hasTeam    = !!teamToken;
+  const charts   = activeTab==="my"?myCharts:(teamCharts||[]);
+  const allTags  = [...new Set(charts.flatMap(c=>c.tags||[]))].sort();
+  const filtered = charts.filter(c=>{
+    const matchSearch=c.name.toLowerCase().includes(search.toLowerCase());
+    const matchTag=!tagFilter||(c.tags||[]).includes(tagFilter);
+    return matchSearch&&matchTag;
+  });
+  const hasTeam=!!teamToken;
 
   const createChart=()=>{
     if(!newName.trim())return;
     const isTeam=activeTab==="team";
-    const nc={id:uid(),name:newName.trim(),icon:tmpl.icon,scheme:tmpl.scheme,
-      tree:mkNode(uid(),"Start","root",80,200),
-      createdAt:new Date().toLocaleDateString(),
-      owner:isTeam?username:"me"};
-    if(isTeam){
-      setTeamCharts(p=>{const next=[...(p||[]),nc];const tok=localStorage.getItem(LS_TEAM_TOKEN),gid=localStorage.getItem(LS_TEAM_GIST_ID);if(tok&&gid)saveGist(tok,gid,TEAM_GIST_FILE,next).catch(()=>{});return next;});
-    } else {
-      setMyCharts(p=>{const next=[...p,nc];const tok=localStorage.getItem(LS_TOKEN),gid=localStorage.getItem(LS_GIST_ID);if(tok&&gid)saveGist(tok,gid,GIST_FILE,next).catch(()=>{});return next;});
-    }
+    const nc={id:uid(),name:newName.trim(),icon:tmpl.icon,scheme:tmpl.scheme,tree:mkNode(uid(),"Start","root",80,200),createdAt:new Date().toLocaleDateString(),owner:isTeam?username:"me",tags:[]};
+    if(isTeam){setTeamCharts(p=>{const n=[...(p||[]),nc];persistTeam(n);return n;});}
+    else{setMyCharts(p=>{const n=[...p,nc];persistMy(n);return n;});}
     setActiveChart({chart:nc,isTeam});
     setShowNew(false);setNewName("");
-  };
-
-  const deleteChart=(id,isTeam)=>{
-    if(isTeam){
-      setTeamCharts(p=>{const next=p.filter(c=>c.id!==id);const tok=localStorage.getItem(LS_TEAM_TOKEN),gid=localStorage.getItem(LS_TEAM_GIST_ID);if(tok&&gid)saveGist(tok,gid,TEAM_GIST_FILE,next).catch(()=>{});return next;});
-    } else {
-      setMyCharts(p=>{const next=p.filter(c=>c.id!==id);const tok=localStorage.getItem(LS_TOKEN),gid=localStorage.getItem(LS_GIST_ID);if(tok&&gid)saveGist(tok,gid,GIST_FILE,next).catch(()=>{});return next;});
-    }
-    setDelTarget(null);
   };
 
   return(
@@ -498,8 +594,8 @@ export default function App(){
         <div style={{fontSize:44,marginBottom:6}}>🗺️</div>
         <h1 style={{color:"#fff",margin:"0 0 6px",fontSize:28,fontWeight:800,letterSpacing:-1}}>Flowchart Builder</h1>
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-          <span style={{color:"#27ae60",fontSize:12}}>👤 Signed in as <b style={{color:"#4a90d9"}}>@{username}</b></span>
-          {hasTeam&&<span style={{color:"#d7a8ff",fontSize:12}}>🟣 Team space connected</span>}
+          <span style={{color:"#27ae60",fontSize:12}}>👤 <b style={{color:"#4a90d9"}}>@{username}</b></span>
+          {hasTeam&&<span style={{color:"#d7a8ff",fontSize:12}}>🟣 Team connected</span>}
           <button onClick={disconnect} style={{background:"transparent",border:"1px solid #2c5282",color:"#7090b0",borderRadius:6,padding:"2px 8px",fontSize:11,cursor:"pointer"}}>Disconnect</button>
         </div>
         <button onClick={()=>setShowNew(true)}
@@ -508,11 +604,11 @@ export default function App(){
         </button>
       </div>
 
-      {/* tabs */}
       <div style={{maxWidth:960,margin:"0 auto",padding:"0 24px"}}>
+        {/* tabs */}
         <div style={{display:"flex",gap:4,marginBottom:20,borderBottom:"2px solid #2c5282"}}>
           {[{key:"my",label:"👤 My Flowcharts",count:myCharts?.length||0},{key:"team",label:"🟣 Team Space",count:teamCharts?.length||0}].map(t=>(
-            <button key={t.key} onClick={()=>{setActiveTab(t.key);setSearch("");}}
+            <button key={t.key} onClick={()=>{setActiveTab(t.key);setSearch("");setTagFilter(null);}}
               style={{padding:"10px 20px",border:"none",borderBottom:activeTab===t.key?(t.key==="team"?"3px solid #8e44ad":"3px solid #4a90d9"):"3px solid transparent",background:"transparent",color:activeTab===t.key?"#fff":"#7090b0",fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:-2}}>
               {t.label} <span style={{fontSize:11,background:"#ffffff18",borderRadius:10,padding:"1px 7px",marginLeft:4}}>{t.count}</span>
             </button>
@@ -522,27 +618,42 @@ export default function App(){
         {/* team connect banner */}
         {activeTab==="team"&&!hasTeam&&(
           <div style={{background:"#2d0a4e",borderRadius:12,border:"1.5px solid #8e44ad",padding:"18px 22px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
-            <div>
-              <div style={{color:"#d7a8ff",fontWeight:700,fontSize:14,marginBottom:4}}>🟣 Connect Team Space</div>
-              <div style={{color:"#a87fd4",fontSize:12}}>Ask your team admin for the Team PAT to access shared flowcharts.</div>
-            </div>
-            <button onClick={()=>setShowTeamSetup(true)}
-              style={{background:"#8e44ad",border:"none",color:"#fff",borderRadius:8,padding:"8px 18px",fontSize:13,cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
-              Connect →
-            </button>
+            <div><div style={{color:"#d7a8ff",fontWeight:700,fontSize:14,marginBottom:4}}>🟣 Connect Team Space</div><div style={{color:"#a87fd4",fontSize:12}}>Ask your team admin for the Team PAT.</div></div>
+            <button onClick={()=>setShowTeamSetup(true)} style={{background:"#8e44ad",border:"none",color:"#fff",borderRadius:8,padding:"8px 18px",fontSize:13,cursor:"pointer",fontWeight:700}}>Connect →</button>
           </div>
         )}
 
-        {/* search */}
-        <div style={{marginBottom:20,display:"flex",alignItems:"center",gap:12}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search flowcharts..."
-            style={{flex:1,padding:"10px 16px",borderRadius:10,border:"1.5px solid #2c5282",background:"#162d4e",color:"#fff",fontSize:13,outline:"none"}}/>
-          <span style={{color:"#a0c0e8",fontSize:13}}>{filtered.length} chart{filtered.length!==1?"s":""}</span>
+        {/* search + tag filters */}
+        <div style={{marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search flowcharts..."
+              style={{flex:1,padding:"10px 16px",borderRadius:10,border:"1.5px solid #2c5282",background:"#162d4e",color:"#fff",fontSize:13,outline:"none"}}/>
+            <span style={{color:"#a0c0e8",fontSize:13}}>{filtered.length} chart{filtered.length!==1?"s":""}</span>
+          </div>
+          {allTags.length>0&&(
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+              <span style={{color:"#7090b0",fontSize:11,fontWeight:600}}>Filter:</span>
+              <button onClick={()=>setTagFilter(null)}
+                style={{padding:"2px 10px",borderRadius:12,border:"1.5px solid #2c5282",background:!tagFilter?"#4a90d9":"transparent",color:!tagFilter?"#fff":"#7090b0",fontSize:11,cursor:"pointer",fontWeight:600}}>
+                All
+              </button>
+              {allTags.map(t=>{
+                const c=tagColor(t);
+                return(
+                  <button key={t} onClick={()=>setTagFilter(tagFilter===t?null:t)}
+                    style={{padding:"2px 10px",borderRadius:12,border:`1.5px solid ${tagFilter===t?c.border:"#2c5282"}`,background:tagFilter===t?c.bg:"transparent",color:tagFilter===t?c.text:"#7090b0",fontSize:11,cursor:"pointer",fontWeight:600}}>
+                    #{t}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
+        {/* grid */}
         {filtered.length===0&&!(activeTab==="team"&&!hasTeam)
           ?<div style={{textAlign:"center",color:"#a0c0e8",padding:48,fontSize:15}}>
-            {activeTab==="team"&&hasTeam?"No team flowcharts yet. Create the first one!":"No flowcharts found."}
+            {tagFilter?`No charts tagged #${tagFilter}.`:activeTab==="team"?"No team flowcharts yet.":"No flowcharts found."}
           </div>
           :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:20,paddingBottom:48}}>
             {filtered.map(chart=>{
@@ -553,51 +664,56 @@ export default function App(){
                   style={{background:isTeam?"linear-gradient(145deg,#2d0a4e,#1a0633)":"linear-gradient(145deg,#1e3a5f,#162d4e)",borderRadius:16,border:`1.5px solid ${isTeam?"#6c3483":"#2c5282"}`,overflow:"hidden",cursor:"pointer",transition:"transform 0.15s,box-shadow 0.15s",boxShadow:"0 4px 20px #00000033"}}
                   onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow="0 8px 32px #00000055";}}
                   onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="0 4px 20px #00000033";}}>
-                  <div onClick={()=>setActiveChart({chart,isTeam})} style={{height:110,background:SCHEMES[chart.scheme].root.bg,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden"}}>
+                  <div onClick={()=>setActiveChart({chart,isTeam})} style={{height:100,background:SCHEMES[chart.scheme].root.bg,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden"}}>
                     <MiniPreview chart={chart}/>
-                    {chart.owner&&chart.owner!=="me"&&<div style={{position:"absolute",top:8,left:8,background:"#00000055",borderRadius:6,padding:"2px 8px",fontSize:10,color:"#fff"}}>by {chart.owner}</div>}
-                    <div style={{position:"absolute",bottom:8,right:10,background:"#ffffff22",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#fff",fontWeight:600}}>Open →</div>
+                    {chart.owner&&chart.owner!=="me"&&<div style={{position:"absolute",top:6,left:8,background:"#00000055",borderRadius:6,padding:"2px 7px",fontSize:10,color:"#fff"}}>by {chart.owner}</div>}
+                    <div style={{position:"absolute",bottom:6,right:8,background:"#ffffff22",borderRadius:6,padding:"2px 7px",fontSize:11,color:"#fff",fontWeight:600}}>Open →</div>
                   </div>
-                  <div style={{padding:"14px 16px"}}>
+                  <div style={{padding:"12px 14px"}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                      <span style={{fontSize:18}}>{chart.icon}</span>
-                      <div style={{display:"flex",gap:4}}>
-                        <button onClick={e=>{e.stopPropagation();setRenamingId(chart.id);setRenameVal(chart.name);}} style={{background:"transparent",border:"none",color:"#a0c0e8",cursor:"pointer",fontSize:14}} title="Rename">✎</button>
-                        <button onClick={e=>{e.stopPropagation();setDelTarget({id:chart.id,name:chart.name,isTeam});}} style={{background:"transparent",border:"none",color:"#e05a5a",cursor:"pointer",fontSize:14}} title="Delete">🗑</button>
-                      </div>
+                      <span style={{color:"#fff",fontWeight:700,fontSize:14,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{chart.icon} {chart.name}</span>
+                      <button onClick={e=>{e.stopPropagation();setCardModal({chart,isTeam});}}
+                        style={{background:"transparent",border:`1px solid ${accent}`,color:"#a0c0e8",cursor:"pointer",fontSize:11,borderRadius:6,padding:"2px 8px",whiteSpace:"nowrap",flexShrink:0,marginLeft:6}}>
+                        ⚙️ Edit
+                      </button>
                     </div>
-                    {renamingId===chart.id?(
-                      <div onClick={e=>e.stopPropagation()} style={{marginBottom:4}}>
-                        <input autoFocus value={renameVal} onChange={e=>setRenameVal(e.target.value)}
-                          onKeyDown={e=>{if(e.key==="Enter")commitRename();if(e.key==="Escape")setRenamingId(null);}}
-                          style={{width:"100%",padding:"5px 8px",borderRadius:6,border:`1.5px solid ${accent}`,background:"#0f2240",color:"#fff",fontSize:13,boxSizing:"border-box",outline:"none"}}/>
-                        <div style={{display:"flex",gap:6,marginTop:5}}>
-                          <button onClick={commitRename} style={{flex:1,padding:"4px",borderRadius:6,background:accent,color:"#fff",border:"none",fontSize:11,cursor:"pointer",fontWeight:600}}>✓ Save</button>
-                          <button onClick={()=>setRenamingId(null)} style={{flex:1,padding:"4px",borderRadius:6,background:"transparent",color:"#a0c0e8",border:"1px solid #2c5282",fontSize:11,cursor:"pointer"}}>Cancel</button>
-                        </div>
+                    {/* tags */}
+                    {(chart.tags||[]).length>0&&(
+                      <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:6}}>
+                        {(chart.tags||[]).map(t=><TagBadge key={t} tag={t}/>)}
                       </div>
-                    ):(
-                      <div style={{color:"#fff",fontWeight:700,fontSize:14,marginBottom:4}}>{chart.name}</div>
                     )}
-                    <div style={{color:"#7090b0",fontSize:11}}>Created {chart.createdAt} · {flatten(chart.tree).length} nodes</div>
-                    <div style={{marginTop:8,display:"flex",gap:6,alignItems:"center"}}>
+                    <div style={{color:"#7090b0",fontSize:11}}>{chart.createdAt} · {flatten(chart.tree).length} nodes</div>
+                    <div style={{marginTop:6,display:"flex",gap:6,alignItems:"center"}}>
                       <span style={{background:SCHEMES[chart.scheme].dept.bg,color:SCHEMES[chart.scheme].dept.text,fontSize:10,borderRadius:6,padding:"2px 8px",fontWeight:600}}>{chart.scheme}</span>
-                      <span style={{color:isTeam?"#d7a8ff":"#27ae60",fontSize:10}}>{isTeam?"🟣 team":"☁️ my gist"}</span>
+                      <span style={{color:isTeam?"#d7a8ff":"#27ae60",fontSize:10}}>{isTeam?"🟣 team":"☁️ gist"}</span>
                     </div>
                   </div>
                 </div>
               );
             })}
             <div onClick={()=>setShowNew(true)}
-              style={{background:"transparent",borderRadius:16,border:`2px dashed ${activeTab==="team"?"#6c3483":"#2c5282"}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",minHeight:220,color:activeTab==="team"?"#8e44ad":"#4a90d9"}}
+              style={{background:"transparent",borderRadius:16,border:`2px dashed ${activeTab==="team"?"#6c3483":"#2c5282"}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",minHeight:200,color:activeTab==="team"?"#8e44ad":"#4a90d9"}}
               onMouseEnter={e=>{e.currentTarget.style.background=activeTab==="team"?"#2d0a4e55":"#1e3a5f55";}}
               onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
-              <div style={{fontSize:36,marginBottom:8}}>＋</div>
-              <div style={{fontWeight:700,fontSize:14}}>New {activeTab==="team"?"Team":"My"} Chart</div>
+              <div style={{fontSize:32,marginBottom:6}}>＋</div>
+              <div style={{fontWeight:700,fontSize:13}}>New {activeTab==="team"?"Team":"My"} Chart</div>
             </div>
           </div>
         }
       </div>
+
+      {/* card actions modal */}
+      {cardModal&&(
+        <CardActionsModal
+          chart={cardModal.chart} isTeam={cardModal.isTeam} hasTeam={hasTeam}
+          onClose={()=>setCardModal(null)}
+          onTagsChange={(id,tags)=>updateTags(id,tags,cardModal.isTeam)}
+          onRename={(id,name)=>renameChart(id,name,cardModal.isTeam)}
+          onMove={moveChart}
+          onDelete={deleteChart}
+        />
+      )}
 
       {/* new chart modal */}
       {showNew&&(
@@ -628,23 +744,13 @@ export default function App(){
         <div style={{position:"fixed",inset:0,background:"#0008",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}} onClick={()=>setShowTeamSetup(false)}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:16,padding:28,width:420,boxShadow:"0 8px 40px #0005"}}>
             <h3 style={{margin:"0 0 8px",color:"#8e44ad",fontSize:18}}>🟣 Connect Team Space</h3>
-            <p style={{margin:"0 0 16px",color:"#666",fontSize:13}}>Ask your team admin for the shared Team PAT. Everyone on the team uses the same token to access and edit team flowcharts.</p>
+            <p style={{margin:"0 0 16px",color:"#666",fontSize:13}}>Ask your team admin for the shared Team PAT.</p>
             <Field label="Team GitHub PAT" value={newTeamToken} onChange={setNewTeamToken} placeholder="ghp_team_token_here" type="password" autoFocus/>
             <BtnRow><Btn v="ghost" onClick={()=>setShowTeamSetup(false)}>Cancel</Btn><Btn v="team" onClick={connectTeamSpace}>Connect Team →</Btn></BtnRow>
           </div>
         </div>
       )}
 
-      {/* delete confirm */}
-      {delTarget&&(
-        <div style={{position:"fixed",inset:0,background:"#0008",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}} onClick={()=>setDelTarget(null)}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,padding:24,width:360,boxShadow:"0 8px 40px #0004"}}>
-            <h3 style={{margin:"0 0 10px",color:"#e05a5a",fontSize:16}}>🗑 Delete Flowchart?</h3>
-            <p style={{color:"#555",fontSize:13,margin:"0 0 20px"}}>Remove <b>{delTarget.name}</b>? This cannot be undone.</p>
-            <BtnRow><Btn v="ghost" onClick={()=>setDelTarget(null)}>Cancel</Btn><Btn v="danger" onClick={()=>deleteChart(delTarget.id,delTarget.isTeam)}>Delete</Btn></BtnRow>
-          </div>
-        </div>
-      )}
       <Toast msg={toast.msg} type={toast.type}/>
     </div>
   );
